@@ -1,0 +1,378 @@
+---
+title: "Homework 7: Predicting Health using Behavioral Risk Factors"
+author: "Dr. Borselli"
+date: "4/13/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# The problem
+The problem we’ll solve is a binary classification task with the goal of predicting an individual’s health. The features are socioeconomic and lifestyle characteristics of individuals and the label is 0 for poor health and 1 for good health. This dataset was collected by the Centers for Disease Control and Prevention.
+
+The Behavioral Risk Factor Surveillance System (BRFSS) is the nation's premier system of health-related telephone surveys that collect state data about U.S. residents regarding their health-related risk behaviors, chronic health conditions, and use of preventive services. Established in 1984 with 15 states, BRFSS now collects data in all 50 states as well as the District of Columbia and three U.S. territories. BRFSS completes more than 400,000 adult interviews each year, making it the largest continuously conducted health survey system in the world.
+
+The objective of the BRFSS is to collect uniform, state-specific data on preventive health practices and risk
+behaviors that are linked to chronic diseases, injuries, and preventable infectious diseases in the adult population.
+Factors assessed by the BRFSS include tobacco use, health care coverage, HIV/AIDS knowledge or prevention,
+physical activity, and fruit and vegetable consumption. Data are collected from a random sample of adults (one per
+household) through a telephone survey.
+
+This codebook (https://www.cdc.gov/brfss/annual_data/2015/pdf/codebook15_llcp.pdf) has info on each of the variables.
+
+
+1) We will be trying to predict the _RFHLTH variable. Note that R will change this variable to be called X_RFHLTH since it doesn't like the fact that it starts with an underscore. Look in the codebook for more information. What does this variable measure? How are the different responses coded? Should we drop some rows based upon this?
+
+_RFHLTH measures self-reported quality of health, either a 1 for good health or 2 for poor health. Missing data or responses were inputed as 9, so these should be dropped during the cleaning process.
+
+2) Read in the data and keep only the columns 'HLTHPLN1', 'PERSDOC2', 'MEDCOST', 'CHECKUP1', 'SEX', 'MARITAL', 'EDUCA', 'RENTHOM1', 'VETERAN3', 'EMPLOY1', 'CHILDREN', 'INCOME2', 'INTERNET', 'SMOKE100', 'USENOW3', 'ALCDAY5', 'FRUITJU1', 'FRUIT1', 'FLUSHOT6', 'X_RFHLTH'. This last one will be our target variable.
+
+In order to get a file that was easier to work with for students, I pre-cleaned the original 516 MB file into a more manageable CSV file that still required some pre-processing.
+
+```{r}
+#keep = c( 'HLTHPLN1', 'PERSDOC2', 'MEDCOST', 'CHECKUP1', 'SEX', 'MARITAL', 'EDUCA', 'RENTHOM1', 'VETERAN3', 'EMPLOY1', 'CHILDREN', 'INCOME2', 'INTERNET', 'SMOKE100', 'USENOW3', 'ALCDAY5', 'FRUITJU1', 'FRUIT1', 'FLUSHOT6', 'X_RFHLTH')
+
+#data = data[keep]
+```
+
+```{r}
+data = read.csv('2015new.csv')
+data = data[,-1]
+```
+
+
+
+3) Perform data cleaning. Note that some variables are coded with things like 9 = no response. You want to delete those rows or possibly perform mean imputation if applicable, by replacing those "no response"s or "unsure"s with the mean of the column. Most columns should also be factors. Check to make sure everything is in good shape before going on. Include comments in your code explaining any changes you make.
+
+```{r}
+#HLTHPLN1 - Do you have any kind of health care coverage, including health insurance, prepaid plans such as HMOs, or government plans such as Medicare, or Indian Health Service? 
+ #Answers: yes(1) or no(2)
+ #removed 7 and 9 bc they meant unsure or refused
+data <- subset(data, data$HLTHPLN1 != 7 & data$HLTHPLN1 != 9)
+data$HLTHPLN1 <- as.factor(data$HLTHPLN1)
+
+
+
+#PERSDOC2 - Do you have one person you think of as your personal doctor or health care provider? (If "No" ask "Is there more than one or is there no person who you think of as your personal doctor or health care provider?".) 
+ #Answers:Yes, only one(1), More than one(2), No(3)
+ #Removed 7 and 9 bc they meant unsure or refused
+data <- subset(data, data$PERSDOC2 != 7 & data$PERSDOC2 != 9)
+data$PERSDOC2 = ifelse(data$PERSDOC2 == 3, 0, data$PERSDOC2)
+data$PERSDOC2 <- as.factor(data$PERSDOC2)
+
+
+#MEDCOST - Was there a time in the past 12 months when you needed to see a doctor but could not because of cost? 
+ #Answers: Yes(1), No(2)
+ #Removed 7, 9 and Blank bc they meant unsure, refused, or not asked
+data <- subset(data, data$MEDCOST != 7 & data$MEDCOST != 9)
+data$MEDCOST <- as.factor(data$MEDCOST)
+
+
+#CHECKUP1 - : About how long has it been since you last visited a doctor for a routine checkup? [A routine checkup is a general physical exam, not an exam for a specific injury, illness, or condition.] 
+ #Answers: Less than a year(1), 1-2 years(2), 2-5 years(3), 5+ years(4), never(8)
+ #Removed 7, 9 and Blank bc they meant unsure, refused, or not asked
+data <- subset(data, data$CHECKUP1 != 7 & data$CHECKUP1 != 9)
+data$CHECKUP1 <- as.factor(data$CHECKUP1)
+
+
+#SEX - Indicate sex of respondent.
+ #Answers: male(1), female(2)
+data$SEX <- as.factor(data$SEX)
+
+
+#MARITAL - Are you: (marital status)
+ #Answers: Married(1), Divorced(2), Widowed(3), Separated(4), Never married(5), member of unmarried couple(6)
+ #removed 9 bc meant refused
+data <- subset(data, data$MARITAL != 9)
+data$MARITAL <- as.factor(data$MARITAL)
+# ONLY MAKES SENSE AS A FACTOR
+
+
+#EDUCA - What is the highest grade or year of school you completed?
+ #Answers: Never attended/up to kindergarten(1), Grade 1-8(2), Grade 9-11(3), Grade 12 or GED(4), College 1-3 years(5), College 4+ years(6)
+ #removed 9 bc meant refused
+data <- subset(data, data$EDUCA != 9)
+data$EDUCA <- as.factor(data$EDUCA)
+
+
+#RENTHOM1 - Do you own or rent your home?
+ #Answers: Own(1), Rent(2), Other(3)
+ #Removed 7 and 9 bc they meant unsure, refused, or not asked
+data <- subset(data, data$RENTHOM1 != 7 & data$RENTHOM1 != 9 & data$RENTHOM1 != 3)
+data$RENTHOM1 <- as.factor(data$RENTHOM1)
+
+
+#EMPLOY1 - : Are you currently…?
+ #Answers: Employed for wages(1), Self-employed(2), Out of work >1 year(3), Out of work <1 year(4), Homemaker(5), Student(6), Retired(7), Unable to work(8)
+ #removed 9 bc meant refused
+data <- subset(data, data$EMPLOY1 != 9)
+data$EMPLOY1 <- as.factor(data$EMPLOY1)
+# ONLY MAKES SENSE AS A FACTOR
+
+#CHILDREN - How many children less than 18 years of age live in your household?
+ #Answers: Number of Children(1-87), None(88)
+ #Removed 99 and Blank bc they meant refused or not asked
+data <- subset(data, data$CHILDREN != 99)
+# 88 means no kids, so replace that with a 0
+data$CHILDREN = ifelse(data$CHILDREN == 88, 0, data$CHILDREN)
+
+
+#INCOME2 - Is your annual household income from all sources
+ #Answers: <$10,000(1), <$15,000(2), <$20,000(3), <$25,000(4), <$35,000(5), <$50,000(6), <$75,000(7), >$75,000(8)
+ #Removed 77, 99 and Blank bc they meant unsure, refused, or not asked 
+ ##(78,000 rows)
+data <- subset(data, data$INCOME2 != 77 & data$INCOME2 != 99)
+
+
+#INTERNET - Have you used the internet in the past 30 days?
+ #Answers: Yes(1), No(2)
+ #Removed 7, 9 and Blank bc they meant unsure, refused, or not asked
+data <- subset(data, data$INTERNET != 7 & data$INTERNET != 9)
+data$INTERNET <- as.factor(data$INTERNET)
+
+
+#SMOKE100 - Have you smoked at least 100 cigarettes in your entire life?
+ #Answers: Yes(1), No(2)
+ #Removed 7, 9 and Blank bc they meant unsure, refused, or not asked
+data <- subset(data, data$SMOKE100 != 7 & data$SMOKE100 != 9)
+data$SMOKE100 <- as.factor(data$SMOKE100)
+
+
+#USENOW3 has variables listed as Don't Know/Not Sure and Blank Values
+# 1 (every day), 2 (some days), 3 (not at all)
+data = subset(data, data$USENOW3 != 7 & data$USENOW3 != 9)
+data$USENOW3 <- as.factor(data$USENOW3)
+
+
+#ALCDAY5 has responses that are Refused and Blank
+data = subset(data, data$ALCDAY5 != 999 & data$ALCDAY5 != 777)
+data$ALCDAY5 = ifelse(data$ALCDAY5 == 888, 0, data$ALCDAY5)
+data$ALCDAY5 = ifelse(data$ALCDAY5 >199.5, (data$ALCDAY5 - 200), data$ALCDAY5)
+data$ALCDAY5 = ifelse(data$ALCDAY5 >99.5, 4*(data$ALCDAY5 - 100), data$ALCDAY5)
+
+
+#FRUITJU1 - During the past month, how many times per day, week or month did you drink 100 percent PURE fruit juices?
+ #Answers: Times per day(101-199), Times per week(201-299), <1 time per month(300), Times per month(301-399), Never(555)
+ #Removed 777, 999 and Blank bc they meant unsure, refused, or not asked
+ ##38,000 rows removed
+data <- subset(data, data$FRUITJU1 != 777 & data$FRUITJU1 != 999)
+#data$FRUITJU1 <- as.factor(data$FRUITJU1)
+data$FRUITJU1 = ifelse(data$FRUITJU1 == 555, 0, data$FRUITJU1)
+data$FRUITJU1 = ifelse(data$FRUITJU1 >299.5, (data$FRUITJU1 - 300), data$FRUITJU1)
+data$FRUITJU1 = ifelse(data$FRUITJU1 >199.5,
+    4*(data$FRUITJU1 - 200), ifelse(data$FRUITJU1>99.5,
+    30*(data$FRUITJU1 - 100),data$FRUITJU1))
+
+
+#FRUIT1 - n: During the past month, not counting juice, how many times per day, week, or month did you eat fruit?
+ #Answers: Times per day(101-199), Times per week(201-299), <1 time per month(300), Times per month(301-399), Never(555)
+ #Removed 777, 999 and Blank bc they meant unsure, refused, or not asked
+ ##35,000 rows removed
+data <- subset(data, data$FRUIT1 != 777 & data$FRUIT1 != 999)
+#data$FRUIT1 <- as.factor(data$FRUIT1)
+data$FRUIT1 = ifelse(data$FRUIT1 == 555, 0, data$FRUIT1)
+data$FRUIT1 = ifelse(data$FRUIT1 >299.5, (data$FRUIT1 - 300), data$FRUIT1)
+data$FRUIT1 = ifelse(data$FRUIT1 >199.5,
+    4*(data$FRUIT1 - 200), ifelse(data$FRUIT1>99.5,
+    30*(data$FRUIT1 - 100),data$FRUIT1))
+
+
+
+#FLUSHOT6 - During the past 12 months, have you had either a flu shot or a flu vaccine that was sprayed in your nose? 
+ #Answers: Yes(1), No(2)
+ #Removed 7, 9 and Blank bc they meant unsure, refused, or not asked
+ ##43,000 rows removed
+data <- subset(data, data$FLUSHOT6 != 7 & data$FLUSHOT6 != 9)
+data$FLUSHOT6 <- as.factor(data$FLUSHOT6)
+
+
+#X_RFHLTH - Adults with good or better health
+ #Answers: Good/Better health(1), Fair/Poor health(2)
+ #remove 9 bc meant unsure or refused or missing
+data <- subset(data, data$X_RFHLTH != 9)
+data$X_RFHLTH <- as.factor(data$X_RFHLTH)
+
+
+
+#VETERAN3 - : Have you ever served on active duty in the United States Armed Forces?
+ #Answers: Yes(1), No(2)
+ #Removed 7, 9 and Blank bc they meant unsure, refused, or not asked
+data <- subset(data, data$VETERAN3 != 7 & data$VETERAN3 != 9)
+data$VETERAN3 <- as.factor(data$VETERAN3)
+```
+
+
+
+4) Perform some EDA. Come up with your own questions and try to answer them with EDA.
+
+```{r}
+summary(data)
+
+```
+```{r}
+table(data$X_RFHLTH, data$HLTHPLN1)
+```
+
+
+This table shows the relationship between an individual's health condition and whether or not they have health coverage. Out of the people without any health coverage, about 23% (4401/(4401+15027)) have bad health. And out of all the people with health coverage, about 17% have bad health (48129/(233958+48129)). The chance of having bad health if you have no health coverage is much higher than if you have health insurance. 
+
+```{r}
+table(data$X_RFHLTH, data$INCOME2)
+```
+This table shows the relationship between an individual's annual household income and their health condition. For example, out of all the people with an income less than 10,000, approximately 46% have bad health (6113/(6113+7037) = .4649). On the other hand, out of all the people with an income of 75,000 or more, about 6%  have bad health (6383/(6383+94327) = .0634). 
+
+
+```{r}
+table(data$X_RFHLTH, data$SMOKE100)
+```
+This table shows the relationship between whether or not an individual has smoked up to 100 cigarettes in their lifetime versus their health condition. Out of all the people who have smoked up to 100 cigarettes, about 23% have bad health (30042/(30042+103066)) = .2257). However, out of all the people who have not smoked up to 100 cigarettes, about 13% have bad health (22488/(22488+145919)=.1335).
+
+
+5) What type of problem is it? Supervised or Unsupervised Learning? Classification or Regression? Binary or Multi-class? Uni-variate or Multivariate?
+
+This problem is supervised learning, binary classification, and it is multivariate.
+
+6) Check to see if there is a class imbalance for the target variable. If so, what does that mean when we are evaluating our model?
+
+```{r}
+table(data$X_RFHLTH)
+```
+Yes, there's a class imbalance. About 83% of survey respondants are in good health and only 17% in poor health.
+
+7) Recall that certain classifiers will only be able to handle numeric predictor variables. If some variables can reasonably be converted to numeric, do that so you can use them with any classifier that requires numeric. If the categories are binary, then coding them as 0–1 is  okay. But as soon as you get more than two categories, things get problematic. If the values are “Low”, “Intermediate”, and “High” (or more generally, if they at least have a natural order), then you can again make sense of coding them numerically as 1, 2, 3. But if the values are “Red”, “Green”, “Blue” (or more generally, something that has no intrinsic order), then simply coding them as integers won’t work. 
+
+```{r}
+numeric_data = data
+for (n in 1:ncol(numeric_data)){
+        numeric_data[, n] = as.numeric(numeric_data[, n])
+}
+numeric_data$X_RFHLTH = factor(numeric_data$X_RFHLTH)
+```
+
+8 ) Split the data
+
+```{r}
+library(caTools)
+set.seed(123)
+split = sample.split(data$X_RFHLTH, SplitRatio = 0.75)
+training_set = subset(data, split == TRUE)
+test_set = subset(data, split == FALSE)
+```
+
+```{r}
+split = sample.split(numeric_data$X_RFHLTH, SplitRatio = 0.75)
+numeric_training_set = subset(numeric_data, split == TRUE)
+numeric_test_set = subset(numeric_data, split == FALSE)
+
+numeric_training_set[,-20] = scale(numeric_training_set[,-20])
+numeric_test_set[,-20] = scale(numeric_test_set[,-20])
+```
+
+9) Build a few classifiers using our classification algorithms. Be careful about which variables each algorithm can handle. You can train classifiers that can used mixed variables using all predictors. You'll have to train classifiers that require only numeric with a subset of the predictor variables.
+
+#Knn
+```{r}
+library(class)
+knn_preds = knn(train = numeric_training_set[,-20],
+             test = numeric_test_set[,-20],
+             cl = numeric_training_set[,20],
+             k = 5,
+             prob = TRUE)
+knn_probs = attr(knn_preds, 'prob')
+```
+
+#Logistic Regression
+```{r}
+logreg_class = glm(formula = X_RFHLTH ~ .,
+                   family = binomial, 
+                   data = numeric_training_set)
+
+logreg_probs = predict(logreg_class, 
+                      type = 'response', 
+                      newdata = numeric_test_set[,-20])
+
+logreg_accuracy = ifelse(test = logreg_probs > .50,
+                         yes = 2,
+                         no = 1)
+
+logreg_accuracy = factor(logreg_accuracy)
+```
+
+
+#Decision Tree
+```{r}
+library(rpart)
+dt_class = rpart(formula = X_RFHLTH ~ .,
+                 data = training_set)
+
+dt_preds = predict(dt_class,
+                   newdata = test_set[,-20],
+                   type = 'prob')
+
+dt_probs = dt_preds[,2]
+
+dt_accuracy = ifelse(test = dt_probs > .50,
+                         yes = 2,
+                         no = 1)
+
+dt_accuracy = factor(dt_accuracy)
+```
+
+#Random Forest
+```{r}
+library(randomForest)
+
+rf_class = randomForest(x = training_set[-20], y = training_set$X_RFHLTH, ntree = 100)
+rf_preds = predict(rf_class, newdata = test_set[,-20], type = 'prob')
+
+rf_probs = rf_preds[,2]
+
+rf_accuracy = ifelse(test = rf_probs > .50, yes = 2, no = 1)
+
+rf_accuracy = factor(rf_accuracy)
+```
+
+10) Find the accuracy of each classifier.
+
+```{r}
+library(caret)
+confusionMatrix(table(numeric_test_set$X_RFHLTH, knn_preds)) 
+confusionMatrix(table(numeric_test_set$X_RFHLTH, logreg_accuracy))
+confusionMatrix(test_set$X_RFHLTH, dt_accuracy)
+confusionMatrix(test_set$X_RFHLTH, rf_accuracy)
+```
+
+11) Plot the ROC curves and find the AUC for each classifier.
+
+```{r}
+library(pROC)
+
+logregROC = roc(numeric_test_set$X_RFHLTH ~ logreg_probs, plot=TRUE, print.auc=TRUE, col="green", lwd =2, legacy.axes=TRUE, main="ROC Curves")
+
+knnROC = roc(numeric_test_set$X_RFHLTH ~ knn_probs, plot=TRUE, print.auc=TRUE, col="blue", lwd = 2, print.auc.y=0.4, legacy.axes=TRUE, add = TRUE)
+
+legend("bottomright",legend=c("Logistic Regression", "KNN"), col=c("green", "blue"), lwd=4, cex = 0.5)
+```
+
+```{r}
+dtROC = roc(test_set$X_RFHLTH ~ dt_probs, plot=TRUE, print.auc=TRUE, col="green", lwd =2, legacy.axes=TRUE, main="ROC Curves")
+
+rfROC = roc(test_set$X_RFHLTH ~ rf_probs, plot=TRUE, print.auc=TRUE, col="blue", lwd = 2, print.auc.y=0.4, legacy.axes=TRUE, add = TRUE)
+
+legend("bottomright",legend=c("Decision Tree", "Random Forest"), col=c("green", "blue"), lwd=4, cex = 0.5)
+```
+
+```{r}
+auc(knnROC)
+auc(logregROC)
+auc(dtROC)
+auc(rfROC)
+```
+
+12) Summarize your findings.
+
+Based off of the plots that were created and each area under the curve, the classifier that worked the best for predicting whether someone has good or bad health was logistic regression classification, with the area under the curve curve being 0.7923. The second best classifier was random forest, with an area under the curve of .7831. The third best was knn, with an area under the curve of 0.6783. The worst classifier was decision tree with an area under the curve of 0.6166.
+
